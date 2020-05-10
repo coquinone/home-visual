@@ -29,7 +29,7 @@ services:
     expose:
       - 9090
     networks:
-      - monitor-net
+      - homeinfra_default
     labels:
       - "org.label-schema.group: monitoring"
       - "traefik.enable=true"
