@@ -1,12 +1,14 @@
-version: '2.1'
+version: '3.7'
 
-networks:
-  monitor-net:
-    driver: bridge
+# networks:
+#   monitor-net:
+#     driver: bridge
 
 volumes:
-    prometheus_data: {}
-    grafana_data: {}
+    prometheus_data:
+      external: true
+    grafana_data:
+      external: true
 
 services:
 
@@ -29,23 +31,36 @@ services:
     networks:
       - monitor-net
     labels:
-      org.label-schema.group: "monitoring"
+      - "org.label-schema.group": "monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.routers.prometheus.rule=Host(`${PROMURL}`)"
 
-  alertmanager:
-    image: prom/alertmanager:v0.20.0
-    container_name: alertmanager
-    volumes:
-      - ./alertmanager:/etc/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/config.yml'
-      - '--storage.path=/alertmanager'
-    restart: unless-stopped
-    expose:
-      - 9093
-    networks:
-      - monitor-net
-    labels:
-      org.label-schema.group: "monitoring"
+      - "traefik.http.routers.prometheus.middlewares=prometheus-https-redirect"
+      - "traefik.http.middlewares.prometheus-https-redirect.redirectscheme.scheme=https"
+
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+      - "traefik.http.routers.prometheus-secure.entrypoints=websecure"
+      - "traefik.http.routers.prometheus-secure.rule=Host(`${PROMURL}`)"
+      - "traefik.http.routers.prometheus-secure.tls=true"
+      - "traefik.http.routers.prometheus-secure.service=prometheus"
+
+  # alertmanager:
+  #   image: prom/alertmanager:v0.20.0
+  #   container_name: alertmanager
+  #   volumes:
+  #     - ./alertmanager:/etc/alertmanager
+  #   command:
+  #     - '--config.file=/etc/alertmanager/config.yml'
+  #     - '--storage.path=/alertmanager'
+  #   restart: unless-stopped
+  #   expose:
+  #     - 9093
+  #   networks:
+  #     - homeinfra_default
+  #   labels:
+  #     org.label-schema.group: "monitoring"
 
   nodeexporter:
     image: prom/node-exporter:v0.18.1
@@ -63,10 +78,16 @@ services:
     expose:
       - 9100
     networks:
-      - monitor-net
+      - homeinfra_default
     labels:
-      org.label-schema.group: "monitoring"
+      - "org.label-schema.group": "monitoring"
 
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.nodeexporter.entrypoints=nodeexporter"
+      - "traefik.tcp.routers.nodeexporter.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.nodeexporter.service=nodeexporter"
+      - "traefik.tcp.services.nodeexporter.loadbalancer.server.port=9100"
+      
   cadvisor:
     image: gcr.io/google-containers/cadvisor:v0.36.0
     container_name: cadvisor
@@ -75,14 +96,28 @@ services:
       - /var/run:/var/run:rw
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
-      #- /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+      - /cgroup:/cgroup:ro
+    privileged: true
     restart: unless-stopped
     expose:
       - 8080
     networks:
-      - monitor-net
+      - homeinfra_default
     labels:
-      org.label-schema.group: "monitoring"
+      - "org.label-schema.group": "monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.cadvisor.entrypoints=web"
+      - "traefik.http.routers.cadvisor.rule=Host(`${CADVISORURL}`)"
+
+      - "traefik.http.routers.cadvisor.middlewares=cadvisor-https-redirect"
+      - "traefik.http.middlewares.cadvisor-https-redirect.redirectscheme.scheme=https"
+
+      - "traefik.http.services.cadvisor.loadbalancer.server.port=8080"
+
+      - "traefik.http.routers.cadvisor-secure.entrypoints=websecure"
+      - "traefik.http.routers.cadvisor-secure.rule=Host(`${CADVISORURL}`)"
+      - "traefik.http.routers.cadvisor-secure.tls=true"
+      - "traefik.http.routers.cadvisor-secure.service=cadvisor"
 
   grafana:
     image: grafana/grafana:6.7.3
@@ -98,36 +133,49 @@ services:
     expose:
       - 3000
     networks:
-      - monitor-net
+      - homeinfra_default
     labels:
-      org.label-schema.group: "monitoring"
+      - "org.label-schema.group": "monitoring"
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.routers.grafana.rule=Host(`${GRAFANAURL}`)"
 
-  pushgateway:
-    image: prom/pushgateway:v1.2.0
-    container_name: pushgateway
-    restart: unless-stopped
-    expose:
-      - 9091
-    networks:
-      - monitor-net
-    labels:
-      org.label-schema.group: "monitoring"
+      - "traefik.http.routers.grafana.middlewares=grafana-https-redirect"
+      - "traefik.http.middlewares.grafana-https-redirect.redirectscheme.scheme=https"
 
-  caddy:
-    image: stefanprodan/caddy
-    container_name: caddy
-    ports:
-      - "3000:3000"
-      - "9090:9090"
-      - "9093:9093"
-      - "9091:9091"
-    volumes:
-      - ./caddy:/etc/caddy
-    environment:
-      - ADMIN_USER=${ADMIN_USER:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
-    restart: unless-stopped
-    networks:
-      - monitor-net
-    labels:
-      org.label-schema.group: "monitoring"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+      - "traefik.http.routers.grafana-secure.entrypoints=websecure"
+      - "traefik.http.routers.grafana-secure.rule=Host(`${GRAFANAURL}`)"
+      - "traefik.http.routers.grafana-secure.tls=true"
+      - "traefik.http.routers.grafana-secure.service=grafana"
+
+  # pushgateway:
+  #   image: prom/pushgateway:v1.2.0
+  #   container_name: pushgateway
+  #   restart: unless-stopped
+  #   expose:
+  #     - 9091
+  #   networks:
+  #     - homeinfra_default
+  #   labels:
+  #     org.label-schema.group: "monitoring"
+
+  # caddy:
+  #   image: stefanprodan/caddy
+  #   container_name: caddy
+  #   ports:
+  #     - "3000:3000"
+  #     - "9090:9090"
+  #     - "9093:9093"
+  #     - "9091:9091"
+  #   volumes:
+  #     - ./caddy:/etc/caddy
+  #   environment:
+  #     - ADMIN_USER=${ADMIN_USER:-admin}
+  #     - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+  #   restart: unless-stopped
+  #   networks:
+  #     - monitor-net
+  #   labels:
+  #     org.label-schema.group: "monitoring"
