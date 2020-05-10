@@ -82,12 +82,6 @@ services:
       - homeinfra_default
     labels:
       - "org.label-schema.group: monitoring"
-
-      - "traefik.enable=true"
-      - "traefik.tcp.routers.nodeexporter.entrypoints=nodeexporter"
-      - "traefik.tcp.routers.nodeexporter.rule=HostSNI(`*`)"
-      - "traefik.tcp.routers.nodeexporter.service=nodeexporter"
-      - "traefik.tcp.services.nodeexporter.loadbalancer.server.port=9100"
       
   cadvisor:
     image: gcr.io/google-containers/cadvisor:v0.36.0
