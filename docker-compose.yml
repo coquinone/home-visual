@@ -147,16 +147,16 @@ services:
       - "traefik.http.routers.grafana-secure.tls=true"
       - "traefik.http.routers.grafana-secure.service=grafana"
 
-  # pushgateway:
-  #   image: prom/pushgateway:v1.2.0
-  #   container_name: pushgateway
-  #   restart: unless-stopped
-  #   expose:
-  #     - 9091
-  #   networks:
-  #     - homeinfra_default
-  #   labels:
-  #     org.label-schema.group: "monitoring"
+  pushgateway:
+    image: prom/pushgateway:v1.2.0
+    container_name: pushgateway
+    restart: unless-stopped
+    expose:
+      - 9091
+    networks:
+      - homeinfra_default
+    labels:
+      org.label-schema.group: "monitoring"
 
   # caddy:
   #   image: stefanprodan/caddy
