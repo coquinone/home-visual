@@ -116,7 +116,7 @@ services:
 
   grafana:
     image: grafana/grafana:6.7.3
-    user: "1002:994"
+    user: "104"
     container_name: grafana
     volumes:
       - grafana_data:/var/lib/grafana
