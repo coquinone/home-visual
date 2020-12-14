@@ -4,11 +4,11 @@ networks:
   homeinfra_default:
     external: true
 
-volumes:
-    prometheus_data:
-      external: true
-    grafana_data:
-      external: true
+#volumes:
+#    prometheus_data:
+#      external: true
+#    grafana_data:
+#      external: true
 
 services:
 
@@ -18,8 +18,9 @@ services:
     container_name: prometheus
     volumes:
       - ./prometheus:/etc/prometheus
-      - prometheus_data:/prometheus
+      - /home/docker/nfs/netmon/prometheus:/prometheus
     command:
+      - '--log.level=debug'
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
@@ -119,7 +120,7 @@ services:
     user: "104"
     container_name: grafana
     volumes:
-      - grafana_data:/var/lib/grafana
+      - /home/docker/nfs/netmon/grafana:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
     environment:
       - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
